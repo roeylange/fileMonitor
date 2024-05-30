@@ -1,5 +1,6 @@
 import difflib
 import os
+import shutil
 import time
 import tkinter as tk
 from tkinter import filedialog, simpledialog, messagebox
@@ -35,7 +36,11 @@ EXCLUDE_EXTENSIONS = ['.swp', '.swo', '.tmp']
 
 class DeletionHandler(FileSystemEventHandler):
     def on_deleted(self, event):
-        if not event.is_directory:
+        if event.is_directory:
+            print(f"Detected deletion of folder: {event.src_path}")
+            backup_folder_path = os.path.join(BACKUP_DIRECTORY, os.path.basename(event.src_path))
+            self.restore_folder(event.src_path, backup_folder_path)
+        elif not event.is_directory:
             print(f"Detected deletion of file: {event.src_path}")
             ext = os.path.splitext(event.src_path)[1].lower()
             if ext in EXCLUDE_EXTENSIONS:
@@ -97,8 +102,16 @@ class DeletionHandler(FileSystemEventHandler):
         return False
 
     def restore_file(self, file_path, backup_file_path):
-        copyfile(backup_file_path, file_path)
-        print(f"Restored file: {file_path}")
+
+        if not os.path.exists(file_path) and os.path.exists(backup_file_path) and os.path.exists(os.path.dirname(file_path)):
+            copyfile(backup_file_path, file_path)
+            print(f"Restored file: {file_path}")
+
+    def restore_folder(self, folder_path, backup_folder_path):
+        if os.path.exists(folder_path):
+            shutil.rmtree(folder_path)  # Remove the original folder if it exists
+        shutil.copytree(backup_folder_path, folder_path)  # Copy the backup folder to the original location
+        print(f"Restored folder: {folder_path}")
 
     def show_restoration_message(self):
         root = tk.Tk()
@@ -110,8 +123,15 @@ def select_paths():
     paths = load_paths()  # Load existing paths
     print(f"Loaded paths: {paths}")  # Debugging information
 
-    def add_path():
-        path = filedialog.askopenfilename() or filedialog.askdirectory()
+    def add_file():
+        path = filedialog.askopenfilename()
+        if path:
+            paths.append(path)
+            update_paths_list()
+        print(f"Added path: {path}")  # Debugging information
+
+    def add_folder():
+        path = filedialog.askdirectory()
         if path:
             paths.append(path)
             update_paths_list()
@@ -138,8 +158,10 @@ def select_paths():
     root = tk.Tk()
     root.title("Select Paths to Monitor")
 
-    tk.Button(root, text="Add Path", command=add_path).pack()
+    tk.Button(root, text="Add File", command=add_file).pack()
     tk.Button(root, text="Remove Selected", command=remove_path).pack()
+    tk.Button(root, text="Add Folder", command=add_folder).pack()
+    
 
     paths_listbox = tk.Listbox(root, selectmode=tk.MULTIPLE)
     paths_listbox.pack()
@@ -151,19 +173,20 @@ def select_paths():
     root.mainloop()
 
 def create_initial_backups(paths):
-    """Create initial backups of all files in the paths."""
+    """Create initial backups of all files and directories in the paths."""
     for path in paths:
         if os.path.isfile(path):
             backup_file_path = os.path.join(BACKUP_DIRECTORY, os.path.basename(path))
             copyfile(path, backup_file_path)
             print(f"Backup created for file: {path}")
         elif os.path.isdir(path):
-            for root, _, files in os.walk(path):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    backup_file_path = os.path.join(BACKUP_DIRECTORY, os.path.basename(file_path))
-                    copyfile(file_path, backup_file_path)
-                    print(f"Backup created for file: {file_path}")
+            backup_dir_path = os.path.join(BACKUP_DIRECTORY, os.path.basename(path))
+            if os.path.exists(backup_dir_path) and backup_dir_path != BACKUP_DIRECTORY:
+                shutil.rmtree(backup_dir_path)
+                print(f"Deleted existing backup directory: {backup_dir_path}")
+            if not os.path.exists(backup_dir_path):
+                shutil.copytree(path, backup_dir_path)
+                print(f"Backup created for directory: {path}")
 
 def load_paths():
     """Load paths from the config file."""
