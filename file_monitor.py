@@ -1,6 +1,7 @@
 import difflib
 import os
 import shutil
+import sys
 import time
 import tkinter as tk
 from tkinter import filedialog, simpledialog, messagebox
@@ -11,8 +12,8 @@ from shutil import copyfile
 # Configuration
 CONFIG_DIRECTORY = os.path.expanduser("~/.monitorProject")
 CONFIG_FILE = os.path.join(CONFIG_DIRECTORY, "list.txt")
+PASSWORD_FILE = os.path.join(CONFIG_DIRECTORY, "password.txt")
 BACKUP_DIRECTORY = os.path.join(CONFIG_DIRECTORY, "backup")  # Directory to store backups
-PASSWORD = "12345"
 MAX_ATTEMPTS = 3
 DEFAULT_THRESH = 10000
 FILE_THRESHOLDS = {
@@ -33,6 +34,7 @@ FILE_THRESHOLDS = {
 }
 
 EXCLUDE_EXTENSIONS = ['.swp', '.swo', '.tmp']
+BINARY_EXTENSIONS = ['.bin', '.exe', '.dll']
 
 class DeletionHandler(FileSystemEventHandler):
     def on_deleted(self, event):
@@ -65,7 +67,7 @@ class DeletionHandler(FileSystemEventHandler):
         if threshold is not None:
             backup_file_path = os.path.join(BACKUP_DIRECTORY, os.path.basename(file_path))
             if os.path.exists(backup_file_path):
-                if ext in ['.txt', '.log', '.doc', '.docx', '.pdf', '.py', '.sh', '.js']:  # Text or document files
+                if ext not in BINARY_EXTENSIONS:  # Text or document files
                     with open(backup_file_path, 'r', errors='ignore') as original_file:
                         original_content = original_file.read()
                     with open(file_path, 'r', errors='ignore') as current_file:
@@ -91,18 +93,20 @@ class DeletionHandler(FileSystemEventHandler):
         root = tk.Tk()
         root.withdraw()  # Hide the main window
 
+        with open(PASSWORD_FILE, 'r') as f:
+            saved_password = f.read().strip()
+
         attempts = 0
         while attempts < MAX_ATTEMPTS:
             password = simpledialog.askstring("Password Required", "Enter password:", show='*')
             if password is None:
                 return False  # User cancelled
-            if password == PASSWORD:
+            if password == saved_password:
                 return True
             attempts += 1
         return False
 
     def restore_file(self, file_path, backup_file_path):
-
         if not os.path.exists(file_path) and os.path.exists(backup_file_path) and os.path.exists(os.path.dirname(file_path)):
             copyfile(backup_file_path, file_path)
             print(f"Restored file: {file_path}")
@@ -153,6 +157,9 @@ def select_paths():
         with open(CONFIG_FILE, 'w') as f:
             for path in paths:
                 f.write(path + '\n')
+        if not set_or_verify_password(root):
+            root.destroy()
+            sys.exit("Password verification failed.")
         root.destroy()
 
     root = tk.Tk()
@@ -161,7 +168,6 @@ def select_paths():
     tk.Button(root, text="Add File", command=add_file).pack()
     tk.Button(root, text="Remove Selected", command=remove_path).pack()
     tk.Button(root, text="Add Folder", command=add_folder).pack()
-    
 
     paths_listbox = tk.Listbox(root, selectmode=tk.MULTIPLE)
     paths_listbox.pack()
@@ -171,6 +177,32 @@ def select_paths():
     tk.Button(root, text="Save and Exit", command=save_and_exit).pack()
 
     root.mainloop()
+
+def set_or_verify_password(root):
+    if not os.path.exists(PASSWORD_FILE):
+        password = simpledialog.askstring("Set Password", "Create a new password:", parent=root, show='*')
+        if password:
+            with open(PASSWORD_FILE, 'w') as f:
+                f.write(password)
+            print("Password set successfully.")
+            return True
+        else:
+            messagebox.showerror("Error", "Password cannot be empty.", parent=root)
+            return False
+    else:
+        with open(PASSWORD_FILE, 'r') as f:
+            saved_password = f.read().strip()
+
+        attempts = 0
+        while attempts < MAX_ATTEMPTS:
+            password = simpledialog.askstring("Password Required", "Enter password:", parent=root, show='*')
+            if password is None:
+                return False  # User cancelled
+            if password == saved_password:
+                return True
+            attempts += 1
+        messagebox.showerror("Error", "Incorrect password. Exiting.", parent=root)
+        return False
 
 def create_initial_backups(paths):
     """Create initial backups of all files and directories in the paths."""
@@ -212,9 +244,29 @@ def start_monitoring(paths):
         observer.stop()
     observer.join()
 
+def trigger_ui():
+    select_paths()
+    create_initial_backups(load_paths())
+
+def create_main_window():
+    root = tk.Tk()
+    root.title("Monitor Project")
+
+    tk.Button(root, text="Select Paths to Monitor", command=trigger_ui).pack()
+    tk.Button(root, text="Exit", command=root.quit).pack()
+
+    root.mainloop()
+
 def main():
     if not os.path.exists(CONFIG_DIRECTORY):
         os.makedirs(CONFIG_DIRECTORY)
+
+    if len(sys.argv) > 1 and sys.argv[1] == 'refresh':
+        # Refresh the backup
+        paths = load_paths()
+        create_initial_backups(paths)
+        print("Backup refreshed.")
+        return
 
     select_paths()  # Always open the UI to select paths
 
