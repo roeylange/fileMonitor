@@ -119,3 +119,31 @@ Simple Authentication: Only simple password authentication is implemented, which
 ### Cooperation
 
 The project benefited greatly from excellent teamwork and communication. Each team member focused on different aspects of the project, leading to effective and efficient problem-solving and implementation.
+
+## Bibliography
+### Documentation
+1. PyQt5 Documentation
+    Riverbank Computing. "PyQt5 Documentation." Available at: https://www.riverbankcomputing.com/static/Docs/PyQt5/
+    Used for developing the GUI and understanding how to implement various widgets and event handling.
+
+2. Watchdog Documentation (PyPI)
+        Watchdog Project. "Watchdog on PyPI." Available at: https://pypi.org/project/watchdog/
+        Source for downloading and installing the Watchdog library, along with usage instructions.
+
+### Community Resources
+
+1. Geeks for Geeks - Watchdog
+    Geeks for Geeks. "Create a Watchdog in Python to Look for Filesystem Changes." Available at: https://www.geeksforgeeks.org/create-a-watchdog-in-python-to-look-for-filesystem-changes/
+    Guide used to set up and implement file system monitoring with Watchdog.
+
+2. Geeks for Geeks - PyQt5 Introduction
+    Geeks for Geeks. "Introduction to PyQt5." Available at: https://www.geeksforgeeks.org/python-introduction-to-pyqt5/
+    Used for understanding the basics of PyQt5 and how to start building GUI applications.
+
+3. Geeks for Geeks - PyQt5 GUI Design
+    Geeks for Geeks. "Designing GUI Applications Using PyQt." Available at: https://www.geeksforgeeks.org/python-designing-gui-applications-using-pyqt/
+    Detailed guide on designing and implementing GUI applications with PyQt.
+
+4. GitHub Issues - Watchdog
+    GitHub Community. "Watchdog Issue #648." Available at: https://github.com/gorakhargosh/watchdog/issues/648
+    Specific issue we also encountered & resolved during the project related to Watchdog functionality.
